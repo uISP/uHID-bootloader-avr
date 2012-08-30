@@ -1,5 +1,1 @@
-config UISP_LED_PORT
-bool "Led port (e.g. PORTD)"
-
-config UISP_LED_PIN
-bool "Led port (e.g. PORTD)"
+comment "surprisingly no user params here"

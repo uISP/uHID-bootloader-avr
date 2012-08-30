@@ -1,8 +1,8 @@
 #ifndef UISP_H
 #define UISP_H
 
-#define run_released() (PINC & 2)
-#define usr_released() (PINC & 1)
+#define run_released() (PINC & 0x2)
+#define usr_released() (PINC & 0x1)
 
 
 struct uisp_app
