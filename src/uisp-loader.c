@@ -1,5 +1,8 @@
 #include <arch/antares.h>
 #include <avr/boot.h>
+#include <avr/io.h>
+#include <avr/signal.h>
+#include <util/delay.h>
 #include <generated/usbconfig.h>
 #include <arch/vusb/usbportability.h>
 #include <arch/vusb/usbdrv.h>
