@@ -1,7 +1,7 @@
 #include <arch/antares.h>
 #include <avr/boot.h>
 #include <avr/io.h>
-#include <avr/signal.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include <generated/usbconfig.h>
 #include <arch/vusb/usbportability.h>
@@ -200,8 +200,8 @@ inline void usbReconnect()
 /* We won't use antares startup to save a few bytes */
 int main()
 {
-	DDRC=0xff;
-	PORTC=0x7;
+	DDRC=1<<2;
+	PORTC=0xff;
 	GICR = (1 << IVCE);  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
  	usbReconnect();
