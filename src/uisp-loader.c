@@ -55,7 +55,7 @@ const PROGMEM char usbHidReportDescriptor[42] = {
 };
 
 static char target;
-static uchar    replyBuffer[7];   
+static uchar    replyBuffer[8];   
 uint8_t* ee_addr;
 
 uchar   usbFunctionSetup(uchar data[8])
@@ -90,9 +90,10 @@ uchar   usbFunctionSetup(uchar data[8])
 			replyBuffer[4] = (((long)FLASHEND + 1) >> 8) & 0xff;
 			replyBuffer[5] = (((long)FLASHEND + 1) >> 16) & 0xff;
 			replyBuffer[6] = (((long)FLASHEND + 1) >> 24) & 0xff; 
-		}		         
+			replyBuffer[7] = F_CPU / 100000;
+		}
 		usbMsgPtr = replyBuffer;
-		return 7;
+		return 8;
 	}
     
 	return 0;
@@ -192,16 +193,20 @@ static inline void leaveBootloader()
 
 inline void usbReconnect()
 {
-	DDRD=0xff;
-	_delay_ms(250);
-	DDRD=0;
+
+	DDRD |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT); 
+	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT)); 
+	_delay_ms(1250);
+	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT)); 
+
+	DDRC=1<<2;
+	PORTC|=1<<2;
+
 }
 
 /* We won't use antares startup to save a few bytes */
 int main()
 {
-	DDRC=1<<2;
-	PORTC=0xff;
 	GICR = (1 << IVCE);  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
  	usbReconnect();
@@ -210,8 +215,6 @@ int main()
 	while (!exit)
 	{
 		usbPoll();  	
-  		if (!run_released())
- 			break;
  	}
 	usbReconnect();
 	leaveBootloader();

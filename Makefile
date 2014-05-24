@@ -20,3 +20,8 @@ antares:
 endif
 
 
+buildall: 
+	for c in `ls configs/`; do \
+		cp $c .config; \
+		make build; \
+	done
