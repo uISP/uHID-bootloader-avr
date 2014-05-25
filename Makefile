@@ -22,6 +22,9 @@ endif
 
 buildall: 
 	for c in `ls configs/`; do \
-		cp $c .config; \
-		make build; \
+		cp configs/$$c .config; \
+		$(MAKE) clean; \
+		$(MAKE) build; \
+		cp images/*.hex prebuilt/; \
 	done
+
