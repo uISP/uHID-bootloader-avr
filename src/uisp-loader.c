@@ -22,6 +22,8 @@
 #   define addr_t           uint
 #endif
 
+#define initRunButton() do { DDRC &= ~(1<<1); PORTC |= (1<<1); } while(0)
+#define checkRunButton() (!(PINC & (1<<1)))
 
 static addr_t           currentAddress; /* in bytes */
 static uchar            offset;         /* data already processed in current transfer */
@@ -209,12 +211,13 @@ int main()
 {
 	GICR = (1 << IVCE);  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
+        initRunButton();
  	usbReconnect();
 	sei();
   	usbInit();
-	while (!exit)
+	while (!exit && !checkRunButton())
 	{
-		usbPoll();  	
+		usbPoll(); 	
  	}
 	usbReconnect();
 	leaveBootloader();
