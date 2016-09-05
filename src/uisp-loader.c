@@ -8,26 +8,74 @@
 #include <arch/vusb/usbdrv.h>
 #include "uisp.h"
 
+static void (*nullVector)(void) __attribute__((__noreturn__));
 
-#ifndef ulong
-#   define ulong    unsigned long
+#ifndef TCCR0
+#define TCCR0   TCCR0B
 #endif
-#ifndef uint
-#   define uint     unsigned int
+#ifndef GICR
+#define GICR    MCUCR
 #endif
 
-#if (FLASHEND) > 0xffff /* we need long addressing */
-#   define addr_t           ulong
+static void leaveBootloader()
+{
+	cli();
+	USB_INTR_ENABLE = 0;
+	USB_INTR_CFG = 0;       /* also reset config bits */
+	TCCR0 = 0;              /* default value */
+	GICR = (1 << IVCE);     /* enable change of interrupt vectors */
+	GICR = (0 << IVSEL);    /* move interrupts to application flash section */
+/* We must go through a global function pointer variable instead of writing
+ *  ((void (*)(void))0)();
+ * because the compiler optimizes a constant 0 to "rcall 0" which is not
+ * handled correctly by the assembler.
+ */
+	nullVector();
+}
+
+
+#define UISP_PART_NAME_LEN  8
+#define UISP_INFO_LEN   (sizeof(struct deviceInfo) + 2 * sizeof(struct partInfo))
+
+struct partInfo {
+	uint16_t      pageSize;
+	uint32_t      size;
+	uint8_t       ioSize;
+	uint8_t       name[UISP_PART_NAME_LEN];
+}  __attribute__((packed));
+
+struct deviceInfo {
+	uint8_t       reportId;
+	uint8_t       numParts;
+	uint8_t       cpuFreq;
+	struct partInfo parts[];
+} __attribute__((packed));
+
+
+#define IOBUFLEN 64
+
+#ifndef CONFIG_UHID_EEPROM_READBACK
+	#define EEP_PART_NAME "eeprom/wo"
 #else
-#   define addr_t           uint
+	#define EEP_PART_NAME "eeprom"
 #endif
 
-#define initRunButton() do { DDRC &= ~(1<<1); PORTC |= (1<<1); } while(0)
-#define checkRunButton() (!(PINC & (1<<1)))
+static const PROGMEM struct deviceInfo devInfo = {
+	.cpuFreq = F_CPU / 100000,
 
-static addr_t           currentAddress; /* in bytes */
-static uchar            offset;         /* data already processed in current transfer */
-volatile static uchar            exit;
+#ifdef CONFIG_UHID_EEPROM
+	.numParts = 2,
+#else
+	.numParts = 1,
+#endif
+
+	.parts = {
+		{SPM_PAGESIZE, CONFIG_AVR_BLDADDR, IOBUFLEN,       "flash"  },
+#ifdef CONFIG_UHID_EEPROM
+		{SPM_PAGESIZE, E2END + 1,          IOBUFLEN,       EEP_PART_NAME }
+#endif
+	},
+};
 
 
 const PROGMEM char usbHidReportDescriptor[42] = {
@@ -47,179 +95,121 @@ const PROGMEM char usbHidReportDescriptor[42] = {
 	0x95, 0x83,                    //   REPORT_COUNT (131)
 	0x09, 0x00,                    //   USAGE (Undefined)
 	0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
-    
+
 	0x85, 0x03,                    //   REPORT_ID (3)
 	0x95, 0x05,                    //   REPORT_COUNT (0x3)
 	0x09, 0x00,                    //   USAGE (Undefined)
 	0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
-    
+
 	0xc0                           // END_COLLECTION
 };
 
-static char target;
-static uchar    replyBuffer[8];   
-uint8_t* ee_addr;
+static char     target;
+static uchar    replyBuffer[IOBUFLEN];
+static uint8_t  wLength;
+
+#if (((FLASHEND) > 0xffff) || ((E2END) > 0xffff))
+typedef uint32_t addr_t;
+#define do_memcpy(d,s,l) memcpy_PF(d,s,l)
+#else
+typedef uint16_t addr_t;
+#define do_memcpy(d,s,l) memcpy_P(d,s,l)
+#endif
+
+static addr_t addr;
 
 uchar   usbFunctionSetup(uchar data[8])
 {
 	usbRequest_t    *rq = (void *)data;
+	/* Avoid pointer some pointer deferences, they eat up flash */
+	target = rq->wValue.bytes[0];
+	wLength = rq->wLength.bytes[0];
+	uint8_t wValue = rq->wValue.bytes[0];
+	uint8_t bRequest = rq->bRequest;
 
-
-	if(rq->bRequest == USBRQ_HID_SET_REPORT){
-		if(rq->wValue.bytes[0] == 2){
-			offset = 0;
-			target = 0;
+	if (bRequest == USBRQ_HID_SET_REPORT) {
+		if (!wValue)
+			leaveBootloader();
+		else
 			return USB_NO_MSG;
-		}else if(rq->wValue.bytes[0] == 3){
-			target = 1;
- 			return USB_NO_MSG;
-		}
-		else{
-			exit=1;
-		}
-	}else if(rq->bRequest == USBRQ_HID_GET_REPORT){	
-		if(rq->wValue.bytes[0] == 3){
-			replyBuffer[0] = 3;
-			replyBuffer[1] = ((int) ee_addr) & 0xff;
-			replyBuffer[2] = ((int) ee_addr) >> 8;
-			replyBuffer[4] = eeprom_read_byte(ee_addr);	
-		}else
-		{
-			replyBuffer[0] = 1;
-			replyBuffer[1] = SPM_PAGESIZE & 0xff;
-			replyBuffer[2] = SPM_PAGESIZE >> 8;
-			replyBuffer[3] = ((long)FLASHEND + 1) & 0xff;
-			replyBuffer[4] = (((long)FLASHEND + 1) >> 8) & 0xff;
-			replyBuffer[5] = (((long)FLASHEND + 1) >> 16) & 0xff;
-			replyBuffer[6] = (((long)FLASHEND + 1) >> 24) & 0xff; 
-			replyBuffer[7] = F_CPU / 100000;
-		}
+	} else if(bRequest == USBRQ_HID_GET_REPORT) {
 		usbMsgPtr = replyBuffer;
-		return 8;
+		if (wValue==0) {
+			do_memcpy(replyBuffer, &devInfo, UISP_INFO_LEN);
+			addr = 0;
+			return UISP_INFO_LEN;
+		} else if (wValue == 1) {
+			do_memcpy(replyBuffer, (void *) addr, wLength);
+		} else {
+
+#ifdef CONFIG_UHID_EEPROM_READBACK
+			eeprom_read_block(replyBuffer, (void *) addr, wLength);
+#endif
+		}
+		addr += wLength;
+		return wLength;
 	}
-    
 	return 0;
 }
 
 uchar usbFunctionWrite(uchar *data, uchar len)
 {
-	if (target)
-	{
-		ee_addr = (data[3] << 8 | data[2]);
-		if (data[1])
-		{
-			eeprom_write_byte(ee_addr,data[4]);
-		}	
-		return len;
-	}
-	union {
-		addr_t  l;
-		uint    s[sizeof(addr_t)/2];
-		uchar   c[sizeof(addr_t)];
-	}       address;
-	uchar   isLast;
+	wLength -= len;
 
-	address.l = currentAddress;
-	if(offset == 0){
-		address.c[0] = data[1];
-		address.c[1] = data[2];
-#if (FLASHEND) > 0xffff /* we need long addressing */
-		address.c[2] = data[3];
-		address.c[3] = 0;
+	if (target == 2) {
+#ifdef CONFIG_UHID_EEPROM
+		eeprom_write_block(data, (void *) addr, len);
 #endif
-		data += 4;
-		len -= 4;
-	}
-	offset += len;
-	isLast = offset & 0x80; /* != 0 if last block received */
-	do{
-		addr_t prevAddr;
-#if SPM_PAGESIZE > 256
-		uint pageAddr;
-#else
-		uchar pageAddr;
-#endif
-		pageAddr = address.s[0] & (SPM_PAGESIZE - 1);
-		if(pageAddr == 0){              /* if page start: erase */
+		addr += len;
+	} else {
+
+		do {
+			if ((addr & (SPM_PAGESIZE - 1)) == 0) {
+				cli();
+				boot_page_erase(addr); /* erase page */
+				sei();
+				boot_spm_busy_wait();
+			}
+
 			cli();
-			boot_page_erase(address.l); /* erase page */
+			boot_page_fill(addr, *((uint16_t *) data));
 			sei();
-			boot_spm_busy_wait();       /* wait until page is erased */
-		}
-		cli();
-		boot_page_fill(address.l, *(short *)data);
-		sei();
-		prevAddr = address.l;
-		address.l += 2;
-		data += 2;
-		/* write page when we cross page boundary */
-		pageAddr = address.s[0] & (SPM_PAGESIZE - 1);
-		if(pageAddr == 0){
-			cli();
-			boot_page_write(prevAddr);
-			sei();
-			boot_spm_busy_wait();
-		}
-		len -= 2;
-	}while(len);
-	currentAddress = address.l;
-	return isLast;
+
+			data+=2;
+			addr+=2;
+			len-=2;
+
+			if ((addr & (SPM_PAGESIZE - 1)) == 0) {
+				cli();
+				boot_page_write(addr - 2);
+				sei();
+				boot_rww_enable_safe();
+			}
+		} while (len);
+	}
+	return (wLength == 0);
 }
 
-static void (*nullVector)(void) __attribute__((__noreturn__));
-#ifndef TCCR0
-#define TCCR0   TCCR0B
-#endif
-#ifndef GICR
-#define GICR    MCUCR
-#endif
-
-
-static inline void leaveBootloader()
-{
-	cli();
-	boot_rww_enable();
-	USB_INTR_ENABLE = 0;
-	USB_INTR_CFG = 0;       /* also reset config bits */
-	TCCR0 = 0;              /* default value */
-	GICR = (1 << IVCE);     /* enable change of interrupt vectors */
-	GICR = (0 << IVSEL);    /* move interrupts to application flash section */
-/* We must go through a global function pointer variable instead of writing
- *  ((void (*)(void))0)();
- * because the compiler optimizes a constant 0 to "rcall 0" which is not
- * handled correctly by the assembler.
- */
-	nullVector();
-}
-
-
-inline void usbReconnect()
-{
-
-	DDRD |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT); 
-	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT)); 
-	_delay_ms(1250);
-	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT)); 
-
-	DDRC=1<<2;
-	PORTC|=1<<2;
-
-}
 
 /* We won't use antares startup to save a few bytes */
 int main()
 {
-	GICR = (1 << IVCE);  /* enable change of interrupt vectors */
+	initRunButton();
+
+	GICR = (1 << IVCE) ;  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
-        initRunButton();
- 	usbReconnect();
+
+	DDRD |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT);
+	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+	_delay_ms(25);
+	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+
 	sei();
   	usbInit();
-	while (!exit && !checkRunButton())
-	{
-		usbPoll(); 	
- 	}
-	usbReconnect();
-	leaveBootloader();
-	return 0; /* never reached, but let's shut up a warning */
+
+	if (checkRunButton())
+		leaveBootloader();
+
+	while (1)
+		usbPoll();
 }

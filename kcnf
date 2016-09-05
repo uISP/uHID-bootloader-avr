@@ -1,1 +1,15 @@
-comment "surprisingly no user params here"
+config USB_CFG_DEVICE_NAME
+string "Device Identifier"
+default "uHID-demo/atmega8"
+
+config USB_CFG_SERIAL_NUMBER
+string "Device "
+default "uHID-demo/atmega8"
+
+config UHID_EEPROM
+bool "Enable eeprom handling"
+default yes
+
+config UHID_EEPROM_READBACK
+bool "Enable eeprom readback"
+default yes
