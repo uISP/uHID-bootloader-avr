@@ -207,9 +207,15 @@ int main()
 	sei();
   	usbInit();
 
+#ifdef CONFIG_RUN_BUTTON_CHECK_ON_START
 	if (checkRunButton())
 		leaveBootloader();
+#endif
 
-	while (1)
-		usbPoll();
+#ifdef CONFIG_RUN_BUTTON_CHECK_ALWAYS
+	while(!checkRunButton()) usbPoll();
+#else
+	while (1) usbPoll();
+#endif
+
 }

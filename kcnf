@@ -1,10 +1,13 @@
-config USB_CFG_DEVICE_NAME
-string "Device Identifier"
-default "uHID-demo/atmega8"
 
-config USB_CFG_SERIAL_NUMBER
-string "Device "
-default "uHID-demo/atmega8"
+menu "Device ID"
+    config USB_CFG_DEVICE_NAME
+    string "Device Identifier"
+    default "atmega8"
+
+    config USB_CFG_SERIAL_NUMBER
+    string "Device "
+    default "MyBoard"
+endmenu
 
 config UHID_EEPROM
 bool "Enable eeprom handling"
@@ -13,3 +16,18 @@ default yes
 config UHID_EEPROM_READBACK
 bool "Enable eeprom readback"
 default yes
+
+config RUN_BUTTON
+bool "GPIO bootloader entry condition"
+default y
+
+choice
+prompt "When to check the condition"
+depends on RUN_BUTTON
+config RUN_BUTTON_CHECK_ON_START
+bool "Check once on device start (e.g. enter boot on press)"
+
+config RUN_BUTTON_CHECK_ALWAYS
+bool "Check continuously (e.g. start app on press)"
+
+endchoice
