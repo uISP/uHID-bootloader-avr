@@ -10,9 +10,6 @@
 
 static void (*nullVector)(void) __attribute__((__noreturn__));
 
-#ifndef TCCR0
-#define TCCR0   TCCR0B
-#endif
 #ifndef GICR
 #define GICR    MCUCR
 #endif
@@ -22,7 +19,6 @@ static void leaveBootloader()
 	cli();
 	USB_INTR_ENABLE = 0;
 	USB_INTR_CFG = 0;       /* also reset config bits */
-	TCCR0 = 0;              /* default value */
 	GICR = (1 << IVCE);     /* enable change of interrupt vectors */
 	GICR = (0 << IVSEL);    /* move interrupts to application flash section */
 /* We must go through a global function pointer variable instead of writing
@@ -45,7 +41,6 @@ struct partInfo {
 }  __attribute__((packed));
 
 struct deviceInfo {
-	uint8_t       reportId;
 	uint8_t       numParts;
 	uint8_t       cpuFreq;
 	struct partInfo parts[];
@@ -70,7 +65,7 @@ static const PROGMEM struct deviceInfo devInfo = {
 #endif
 
 	.parts = {
-		{SPM_PAGESIZE, CONFIG_AVR_BLDADDR, IOBUFLEN,       "flash"  },
+		{SPM_PAGESIZE, CONFIG_AVR_BLDADDR, 6,       "flash"  },
 #ifdef CONFIG_UHID_EEPROM
 		{SPM_PAGESIZE, E2END + 1,          IOBUFLEN,       EEP_PART_NAME }
 #endif
@@ -86,18 +81,18 @@ const PROGMEM char usbHidReportDescriptor[42] = {
 	0x26, 0xff, 0x00,              //   LOGICAL_MAXIMUM (255)
 	0x75, 0x08,                    //   REPORT_SIZE (8)
 
+	0x85, 0x00,                    //   REPORT_ID (0)
+	0x95, 0xff,                    //   REPORT_COUNT (255)
+	0x09, 0x00,                    //   USAGE (Undefined)
+	0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
+
 	0x85, 0x01,                    //   REPORT_ID (1)
-	0x95, 0x06,                    //   REPORT_COUNT (6)
+	0x95, IOBUFLEN + 1,                    //   REPORT_COUNT (6)
 	0x09, 0x00,                    //   USAGE (Undefined)
 	0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
 
 	0x85, 0x02,                    //   REPORT_ID (2)
-	0x95, 0x83,                    //   REPORT_COUNT (131)
-	0x09, 0x00,                    //   USAGE (Undefined)
-	0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
-
-	0x85, 0x03,                    //   REPORT_ID (3)
-	0x95, 0x05,                    //   REPORT_COUNT (0x3)
+	0x95, IOBUFLEN + 1,                    //   REPORT_COUNT (131)
 	0x09, 0x00,                    //   USAGE (Undefined)
 	0xb2, 0x02, 0x01,              //   FEATURE (Data,Var,Abs,Buf)
 
@@ -105,7 +100,7 @@ const PROGMEM char usbHidReportDescriptor[42] = {
 };
 
 static char     target;
-static uchar    replyBuffer[IOBUFLEN];
+static uchar    replyBuffer[IOBUFLEN+1];
 static uint8_t  wLength;
 
 #if (((FLASHEND) > 0xffff) || ((E2END) > 0xffff))
@@ -118,15 +113,15 @@ typedef uint16_t addr_t;
 
 static addr_t addr;
 
+
 uchar   usbFunctionSetup(uchar data[8])
 {
 	usbRequest_t    *rq = (void *)data;
-	/* Avoid pointer some pointer deferences, they eat up flash */
+	/* Avoid pointer some pointer derefs, they eat up flash */
 	target = rq->wValue.bytes[0];
 	wLength = rq->wLength.bytes[0];
 	uint8_t wValue = rq->wValue.bytes[0];
 	uint8_t bRequest = rq->bRequest;
-
 	if (bRequest == USBRQ_HID_SET_REPORT) {
 		if (!wValue)
 			leaveBootloader();
@@ -156,20 +151,18 @@ uchar usbFunctionWrite(uchar *data, uchar len)
 {
 	wLength -= len;
 
+	/* Discard reportId */
+	data++;
+	len--;
+
 	if (target == 2) {
 #ifdef CONFIG_UHID_EEPROM
 		eeprom_write_block(data, (void *) addr, len);
-#endif
 		addr += len;
+#endif
 	} else {
 
 		do {
-			if ((addr & (SPM_PAGESIZE - 1)) == 0) {
-				cli();
-				boot_page_erase(addr); /* erase page */
-				sei();
-				boot_spm_busy_wait();
-			}
 
 			cli();
 			boot_page_fill(addr, *((uint16_t *) data));
@@ -180,13 +173,17 @@ uchar usbFunctionWrite(uchar *data, uchar len)
 			len-=2;
 
 			if ((addr & (SPM_PAGESIZE - 1)) == 0) {
+				addr_t prev = addr - 2;
+				boot_page_erase(prev); /* erase page */
+				boot_spm_busy_wait();
 				cli();
-				boot_page_write(addr - 2);
+				boot_page_write(prev);
 				sei();
 				boot_rww_enable_safe();
 			}
 		} while (len);
 	}
+
 	return (wLength == 0);
 }
 
