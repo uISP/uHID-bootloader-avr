@@ -9,6 +9,7 @@
 #include "uisp.h"
 
 
+static char getTheFuckOut;
 
 static void (*nullVector)(void) __attribute__((__noreturn__));
 
@@ -128,8 +129,8 @@ uchar   usbFunctionSetup(uchar data[8])
 	wLength = rq->wLength.bytes[0];
 	uint8_t bRequest = rq->bRequest;
 	if (bRequest == USBRQ_HID_SET_REPORT) {
-		if (!target)
-			leaveBootloader();
+		if (target==1)
+			getTheFuckOut=1;
 		return USB_NO_MSG;
 	} else if(bRequest == USBRQ_HID_GET_REPORT) {
 		replyBuffer[0]=target;
@@ -208,11 +209,8 @@ uchar usbFunctionWrite(uchar *data, uchar len)
 }
 
 
-/* We won't use antares startup to save a few bytes */
-int main()
+static void reconnect()
 {
-	initRunButton();
-
 	GICR = (1 << IVCE) ;  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
 
@@ -220,21 +218,32 @@ int main()
 	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
 	_delay_ms(5);
 	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+}
+
+/* We won't use antares startup to save a few bytes */
+int main()
+{
+	initRunButton();
+	reconnect();
 
 	sei();
   	usbInit();
 
 #ifdef CONFIG_RUN_BUTTON_CHECK_ON_START
 	if (checkRunButton())
-		leaveBootloader();
+		getTheFuckOut =1;
 #endif
 
-#ifdef CONFIG_RUN_BUTTON_CHECK_ALWAYS
-	while(!checkRunButton()) usbPoll();
-#else
-	while (1) usbPoll();
-#endif
+	while (!getTheFuckOut) {
+		usbPoll();
 
+	#ifdef CONFIG_RUN_BUTTON_CHECK_ON_START
+		if (checkRunButton())
+			getTheFuckOut =1;
+	#endif
+	}
+	reconnect();
+	leaveBootloader();
 }
 
 #include "../antares/src/lib/contrib/vusb/usbdrv/usbdrv.c"
