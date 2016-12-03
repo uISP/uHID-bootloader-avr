@@ -111,7 +111,7 @@ function(add_loader_target name)
   set(target ${CONFIG_FILENAME})
   generate_config(${target})
   add_executable(${target}
-    src/uisp-loader.c
+    src/main.c
     packages/vusb-20121206/usbdrv/usbdrvasm.S)
   target_include_directories(${target} PRIVATE ${CMAKE_BINARY_DIR}/include-${target})
   target_compile_options(${target} PRIVATE -mmcu=${CONFIG_MCU})

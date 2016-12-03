@@ -5,7 +5,7 @@
 #include <usbconfig.h>
 #include <usbdrv/usbportability.h>
 #include <usbdrv/usbdrv.h>
-#include "uisp.h"
+#include <uhid.h>
 
 
 static void (*nullVector)(void) __attribute__((__noreturn__));
