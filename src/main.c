@@ -56,7 +56,7 @@ struct partInfo {
 struct deviceInfo {
 	uint8_t       version;
 	uint8_t       numParts;
-	uint8_t       cpuFreq;
+	uint16_t       cpuFreq;
 	struct partInfo parts[];
 } __attribute__((packed));
 
@@ -74,7 +74,7 @@ struct deviceInfo {
 
 static const PROGMEM struct deviceInfo devInfo = {
 	.version = 1,
-	.cpuFreq = F_CPU / 100000,
+	.cpuFreq = F_CPU / 10000,
 
 #ifdef CONFIG_UHID_EEPROM
 	.numParts = 2,
