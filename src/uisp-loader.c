@@ -1,13 +1,14 @@
-#include <arch/antares.h>
 #include <avr/boot.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
-#include <generated/usbconfig.h>
-#include <arch/vusb/usbportability.h>
-#include <arch/vusb/usbdrv.h>
+#include <usbconfig.h>
+#include <usbdrv/usbportability.h>
+#include <usbdrv/usbdrv.h>
 #include "uisp.h"
 
+
+#define CONFIG_AVR_BLDADDR 0x1800
 
 static char getTheFuckOut;
 
@@ -54,7 +55,7 @@ struct deviceInfo {
 #define IOBUFLEN 64
 
 #ifndef CONFIG_UHID_EEPROM_READBACK
-	#define EEP_PART_NAME "eeprom/wo"
+	#define EEP_PART_NAME "eepromwo"
 #else
 	#define EEP_PART_NAME "eeprom"
 #endif
@@ -246,4 +247,4 @@ int main()
 	leaveBootloader();
 }
 
-#include "../antares/src/lib/contrib/vusb/usbdrv/usbdrv.c"
+#include "../packages/vusb-20121206/usbdrv/usbdrv.c"
