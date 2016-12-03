@@ -1,9 +1,10 @@
 #ifndef UISP_H
 #define UISP_H
 
-#ifdef CONFIG_RUN_BUTTON
-#define initRunButton() do { DDRC &= ~(1<<1); PORTC |= (1<<1); } while(0)
-#define checkRunButton() ((PINC & (1<<1)))
+
+#if defined(CONFIG_RUN_BUTTON_ON_START) || defined(CONFIG_RUN_BUTTON_ON_LOOP)
+#define initRunButton() CONFIG_RUN_BUTTON_PORT |= (1<<CONFIG_RUN_BUTTON_BIT);
+#define checkRunButton() (CONFIG_RUN_BUTTON_PIN & (1<<CONFIG_RUN_BUTTON_BIT))
 #else
 #define initRunButton()
 #define checkRunButton() (0)

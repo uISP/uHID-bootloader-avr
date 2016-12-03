@@ -8,19 +8,28 @@
 #include "uisp.h"
 
 
-#define CONFIG_AVR_BLDADDR 0x1800
-
-static char getTheFuckOut;
-
 static void (*nullVector)(void) __attribute__((__noreturn__));
 
 #ifndef GICR
 #define GICR    MCUCR
 #endif
 
+static void reconnect()
+{
+	GICR = (1 << IVCE) ;  /* enable change of interrupt vectors */
+	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
+
+	DDRD |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT);
+	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+	_delay_ms(5);
+	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+}
+
+
 static void leaveBootloader()
 {
 	cli();
+	reconnect();
 	USB_INTR_ENABLE = 0;
 	USB_INTR_CFG = 0;       /* also reset config bits */
 	GICR = (1 << IVCE);     /* enable change of interrupt vectors */
@@ -51,13 +60,16 @@ struct deviceInfo {
 	struct partInfo parts[];
 } __attribute__((packed));
 
-
-#define IOBUFLEN 64
+#ifdef UHID_TINY
+#	define IOBUFLEN 2
+#else
+#	define IOBUFLEN 64
+#endif
 
 #ifndef CONFIG_UHID_EEPROM_READBACK
-	#define EEP_PART_NAME "eepromwo"
+#	define EEP_PART_NAME "eepromwo"
 #else
-	#define EEP_PART_NAME "eeprom"
+#	define EEP_PART_NAME "eeprom"
 #endif
 
 static const PROGMEM struct deviceInfo devInfo = {
@@ -71,12 +83,13 @@ static const PROGMEM struct deviceInfo devInfo = {
 #endif
 
 	.parts = {
-		{SPM_PAGESIZE, CONFIG_AVR_BLDADDR, IOBUFLEN,       "flash"  },
+		{SPM_PAGESIZE, UHID_LOAD_ADDRESS, IOBUFLEN,       "flash"  },
 #ifdef CONFIG_UHID_EEPROM
 		{SPM_PAGESIZE, E2END + 1,          IOBUFLEN,       EEP_PART_NAME }
 #endif
 	},
 };
+#define INF_SIZE ((sizeof(struct deviceInfo) + 2 * sizeof(struct partInfo)))
 
 
 const PROGMEM char usbHidReportDescriptor[42] = {
@@ -106,8 +119,14 @@ const PROGMEM char usbHidReportDescriptor[42] = {
 };
 
 static char     target;
-static uchar    replyBuffer[IOBUFLEN+1];
-static uint8_t  wLength;
+
+#ifdef UHID_TINY
+	static uchar    replyBuffer[INF_SIZE];
+#else
+	static uchar    replyBuffer[IOBUFLEN+1];
+#endif
+
+
 
 #if (((FLASHEND) > 0xffff) || ((E2END) > 0xffff))
 typedef uint32_t addr_t;
@@ -118,20 +137,27 @@ typedef uint16_t addr_t;
 #endif
 
 static addr_t addr;
+
+
+#ifndef UHID_TINY
 static char opStart;
+static uint8_t  wLength;
+#endif
 
 uchar   usbFunctionSetup(uchar data[8])
 {
 	usbRequest_t    *rq = (void *)data;
-	opStart = 1;
-
 	/* Avoid pointer some pointer derefs, they eat up flash */
 	target = rq->wValue.bytes[0];
+#ifndef UHID_TINY
+	opStart = 1;
 	wLength = rq->wLength.bytes[0];
+#endif
+
 	uint8_t bRequest = rq->bRequest;
 	if (bRequest == USBRQ_HID_SET_REPORT) {
 		if (target==1)
-			getTheFuckOut=1;
+			leaveBootloader();
 		return USB_NO_MSG;
 	} else if(bRequest == USBRQ_HID_GET_REPORT) {
 		replyBuffer[0]=target;
@@ -145,7 +171,7 @@ uchar   usbFunctionSetup(uchar data[8])
 		}
 #ifdef CONFIG_UHID_EEPROM_READBACK
 		else {
-			eeprom_read_block(&replyBuffer[1], (void *) addr, wLength);
+			eeprom_read_block(&replyBuffer[1], (void *) addr, IOBUFLEN);
 		}
 #endif
 		addr += IOBUFLEN;
@@ -187,13 +213,17 @@ static void flash_write_byte(uchar byte)
 
 uchar usbFunctionWrite(uchar *data, uchar len)
 {
+#ifndef UHID_TINY
 	wLength -= len;
 	/* Discard reportId */
 	if (opStart) {
+#endif
 		data++;
 		len--;
+#ifndef UHID_TINY
 		opStart=0;
 	}
+#endif
 
 	if (target == 3) {
 #ifdef CONFIG_UHID_EEPROM
@@ -201,25 +231,23 @@ uchar usbFunctionWrite(uchar *data, uchar len)
 		addr += len;
 #endif
 	} else {
+#ifndef UHID_TINY
 		 while (len--) {
 			flash_write_byte(*data++);
 		};
+#else
+		flash_write_word(* (uint16_t *) data);
+#endif
 	}
+#ifdef UHID_TINY
+	return 1;
+#else
 	/* wLength < 1 takes 10 bytes less that wLength == 0 */
     return (wLength < 1);
+#endif
 }
 
 
-static void reconnect()
-{
-	GICR = (1 << IVCE) ;  /* enable change of interrupt vectors */
-	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
-
-	DDRD |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT);
-	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
-	_delay_ms(5);
-	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
-}
 
 /* We won't use antares startup to save a few bytes */
 int main()
@@ -230,21 +258,24 @@ int main()
 	sei();
   	usbInit();
 
-#ifdef CONFIG_RUN_BUTTON_CHECK_ON_START
+#ifdef CONFIG_RUN_BUTTON_ON_START
 	if (checkRunButton())
-		getTheFuckOut =1;
+		leaveBootloader();
 #endif
 
-	while (!getTheFuckOut) {
+	while (1) {
 		usbPoll();
 
-	#ifdef CONFIG_RUN_BUTTON_CHECK_ON_START
+#ifdef	CONFIG_RUN_BUTTON_ON_LOOP
 		if (checkRunButton())
-			getTheFuckOut =1;
-	#endif
+			leaveBootloader();
+#endif
 	}
-	reconnect();
-	leaveBootloader();
 }
 
+/* Shut up a vusb warning when including */
+USB_PUBLIC usbMsgLen_t usbFunctionDescriptor(struct usbRequest *rq)
+{
+
+}
 #include "../packages/vusb-20121206/usbdrv/usbdrv.c"
