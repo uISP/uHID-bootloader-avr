@@ -42,7 +42,6 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM GenericReport[] =
         HID_RI_USAGE_PAGE(16, 0xFF00), /* Vendor Page 0 */
         HID_RI_USAGE(8, 0x01), /* Vendor Usage 1 */
         HID_RI_COLLECTION(8, 0x01), /* Vendor Usage 1 */
-            HID_RI_USAGE(8, 0x02), /* Vendor Usage 2 */
             HID_RI_LOGICAL_MINIMUM(8, 0x00),
             HID_RI_LOGICAL_MAXIMUM(8, 0xFF),
             HID_RI_REPORT_SIZE(8, 0x08),
@@ -65,11 +64,6 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM GenericReport[] =
         HID_RI_END_COLLECTION(0),
 };
 
-/** Device descriptor structure. This descriptor, located in FLASH memory, describes the overall
- *  device characteristics, including the supported USB version, control endpoint size and the
- *  number of device configurations. The descriptor is read out by the USB host when the enumeration
- *  process begins.
- */
 const USB_Descriptor_Device_t PROGMEM DeviceDescriptor =
 {
         .Header                 = {.Size = sizeof(USB_Descriptor_Device_t), .Type = DTYPE_Device},
@@ -92,11 +86,6 @@ const USB_Descriptor_Device_t PROGMEM DeviceDescriptor =
         .NumberOfConfigurations = FIXED_NUM_CONFIGURATIONS
 };
 
-/** Configuration descriptor structure. This descriptor, located in FLASH memory, describes the usage
- *  of the device in one of its supported configurations, including information about any device interfaces
- *  and endpoints. The descriptor is read out by the USB host during the enumeration process when selecting
- *  a configuration so that the host may correctly communicate with the USB device.
- */
 const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
 {
         .Config =
