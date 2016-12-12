@@ -1,50 +1,42 @@
-/*
-             LUFA Library
-     Copyright (C) Dean Camera, 2015.
-
-  dean [at] fourwalledcubicle [dot] com
-           www.lufa-lib.org
-*/
-
-/*
-  Copyright 2015  Dean Camera (dean [at] fourwalledcubicle [dot] com)
-
-  Permission to use, copy, modify, distribute, and sell this
-  software and its documentation for any purpose is hereby granted
-  without fee, provided that the above copyright notice appear in
-  all copies and that both that the copyright notice and this
-  permission notice and warranty disclaimer appear in supporting
-  documentation, and that the name of the author not be used in
-  advertising or publicity pertaining to distribution of the
-  software without specific, written prior permission.
-
-  The author disclaims all warranties with regard to this
-  software, including all implied warranties of merchantability
-  and fitness.  In no event shall the author be liable for any
-  special, indirect or consequential damages or any damages
-  whatsoever resulting from loss of use, data or profits, whether
-  in an action of contract, negligence or other tortious action,
-  arising out of or in connection with the use or performance of
-  this software.
-*/
-
-/** \file
- *
- *  USB Device Descriptors, for library use when in USB device mode. Descriptors are special
- *  computer-readable structures which the host requests upon device enumeration, to determine
- *  the device's capabilities and functions.
- */
-
+#include <LUFA/Drivers/USB/USB.h>
+#include <avr/pgmspace.h>
 #include <stdint.h>
 #include <uhid.h>
-#include "Descriptors.h"
 
-/** HID class report descriptor. This is a special descriptor constructed with values from the
- *  USBIF HID class specification to describe the reports and capabilities of the HID device. This
- *  descriptor is parsed by the host and its contents used to determine what data (and in what encoding)
- *  the device will send, and what it may be sent back from the host. Refer to the HID specification for
- *  more details on HID report descriptors.
- */
+
+typedef struct
+{
+        USB_Descriptor_Configuration_Header_t Config;
+
+        // Generic HID Interface
+        USB_Descriptor_Interface_t            HID_Interface;
+        USB_HID_Descriptor_HID_t              HID_GenericHID;
+        USB_Descriptor_Endpoint_t             HID_ReportINEndpoint;
+} USB_Descriptor_Configuration_t;
+
+enum InterfaceDescriptors_t
+{
+        INTERFACE_ID_GenericHID = 0, /**< GenericHID interface descriptor ID */
+};
+
+enum StringDescriptors_t
+{
+        STRING_ID_Language     = 0, /**< Supported Languages string descriptor ID (must be zero) */
+        STRING_ID_Manufacturer = 1, /**< Manufacturer string ID */
+        STRING_ID_Product      = 2, /**< Product string ID */
+        STRING_ID_Serial       = 3, /**< Product string ID */
+};
+
+        /* Macros: */
+                /** Endpoint address of the Generic HID reporting IN endpoint. */
+                #define GENERIC_IN_EPADDR         (ENDPOINT_DIR_IN  | 1)
+
+                /** Endpoint address of the Generic HID reporting OUT endpoint. */
+                #define GENERIC_OUT_EPADDR        (ENDPOINT_DIR_OUT | 2)
+
+                /** Size in bytes of the Generic HID reporting endpoint. */
+                #define GENERIC_EPSIZE            8
+
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM GenericReport[] =
 {
         HID_RI_USAGE_PAGE(16, 0xFF00), /* Vendor Page 0 */
@@ -129,7 +121,7 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
                         .InterfaceNumber        = INTERFACE_ID_GenericHID,
                         .AlternateSetting       = 0x00,
 
-                        .TotalEndpoints         = 2,
+                        .TotalEndpoints         = 1,
 
                         .Class                  = HID_CSCP_HIDClass,
                         .SubClass               = HID_CSCP_NonBootSubclass,
@@ -158,16 +150,6 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
         			.EndpointSize           = GENERIC_EPSIZE,
         			.PollingIntervalMS      = 0x05
         		},
-
-        .HID_ReportOUTEndpoint =
-        		{
-        			.Header                 = {.Size = sizeof(USB_Descriptor_Endpoint_t), .Type = DTYPE_Endpoint},
-
-        			.EndpointAddress        = GENERIC_OUT_EPADDR,
-        			.Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
-        			.EndpointSize           = GENERIC_EPSIZE,
-        			.PollingIntervalMS      = 0x05
-        		}
 };
 
 const USB_Descriptor_String_t PROGMEM LanguageString = USB_STRING_DESCRIPTOR_ARRAY(LANGUAGE_ID_ENG);
