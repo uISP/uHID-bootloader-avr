@@ -1,4 +1,4 @@
-# uHID bootloader for AVR (vusb stack)
+# uHID bootloader for AVR (v-usb and lufa usb stacks)
 
 This is the uHID bootloader for AVR microcontrollers. Features:
 
@@ -10,8 +10,17 @@ This is the uHID bootloader for AVR microcontrollers. Features:
 
 # Compiling
 
-- Get and install cmake
+- Install git cmake and avr tools.
+- Get the uHID bootloader code and submodules
+
+```
+git clone https://github.com/uISP/uHID-bootloader-avr.git
+cd uHID-bootloader-avr
+git submodule update --init
+```
+
 - Make sure you have all the avr tools in your path
+
 ```
 mkdir build
 cd build
@@ -24,7 +33,11 @@ make
 Just drop a file with configuration into devices/ directory.
 Use existing targets as a reference
 A typical configuration looks like this
+
 ```
+#Pick a usb stak to use (vusb or lufa)
+set(UHID_USB_STACK lufa)
+
 # Chose between smaller size or faster flashing speed
 # e.g. "small" or "fast"
 set(CONFIG_UHID_VARIANT "fast")
@@ -44,6 +57,7 @@ set(CONFIG_MCU  atmega8)
 set(CONFIG_LOAD_ADDR 0x1800)
 set(CONFIG_F_CPU  12000000)
 
+# USB IO config (v-usb only)
 set(CONFIG_USB_IOPORT D)
 set(CONFIG_USB_DPLUS_BIT 3)
 set(CONFIG_USB_DMINUS_BIT  2)
@@ -64,11 +78,13 @@ set(CONFIG_FILENAME uhid-${CONFIG_USB_PRODUCT}-${CONFIG_USB_SERIAL}-${CONFIG_F_C
 
 #License
 
-GPLv2 + obdev.at exception
+uHID bootloader uses 2 different usb stacks, depending on the device in use, therefore the licensing mess looks like this:
 
-See packages/vusb-20121206/License.txt
+* Builds that use v-usb stack are subject to GPLv2 + obdev.at exception.
+  See packages/v-usb/License.txt for details
 
-Since this bootloader uses vusb the licensing terms stay pretty much the same
+* Builds that use LUFA share the very same permissive license.
+  See packages/lufa/LUFA/License.txt for details
 
 #Authors
 
