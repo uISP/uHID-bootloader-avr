@@ -74,9 +74,15 @@ int main()
 	}
 }
 
-/* Shut up a vusb warning when including */
+/* Shut up vusb warnings when including it */
 USB_PUBLIC usbMsgLen_t usbFunctionDescriptor(struct usbRequest *rq)
+{
+	return 0;
+}
+
+USB_PUBLIC void usbSetInterrupt(uchar *data, uchar len)
 {
 
 }
-#include "../packages/vusb-20121206/usbdrv/usbdrv.c"
+
+#include "usbdrv/usbdrv.c"

@@ -1,6 +1,9 @@
-set(VUSB_DIR packages/vusb-20121206/)
+set(VUSB_DIR packages/v-usb)
+
+
 set(SRC_vusb ${VUSB_DIR}/usbdrv/usbdrvasm.S)
 set(INC_vusb ${VUSB_DIR})
+set(CFLAGS_vusb -Wno-unused-function)
 
 function(generate_config_vusb target)
   message(STATUS "Generating vusb config for ${target}")
@@ -20,6 +23,8 @@ function(generate_config_vusb target)
   defstr(USB_CFG_SERIAL_NUMBER ${CONFIG_USB_SERIAL})
   defstr(USB_CFG_VENDOR_NAME ${CONFIG_USB_VENDOR})
   defstr(USB_CFG_DEVICE_NAME ${CONFIG_USB_PRODUCT})
+
+  defconf(CONFIG_USB_ONLY_INCLUDE 1)
 
   generate_common_config()
   file(APPEND ${conf} "#endif\n")

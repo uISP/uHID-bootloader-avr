@@ -1,4 +1,5 @@
 set(LUFA_DIR packages/lufa)
+
 LIST(APPEND SRC_lufa ${LUFA_DIR}/LUFA/Drivers/USB/Core/AVR8/USBController_AVR8.c)
 LIST(APPEND SRC_lufa ${LUFA_DIR}/LUFA/Drivers/USB/Core/AVR8/USBInterrupt_AVR8.c)
 LIST(APPEND SRC_lufa ${LUFA_DIR}/LUFA/Drivers/USB/Core/ConfigDescriptors.c)

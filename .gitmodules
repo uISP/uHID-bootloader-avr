@@ -1,3 +1,6 @@
 [submodule "packages/lufa"]
 	path = packages/lufa
 	url = https://github.com/abcminiuser/lufa.git
+[submodule "packages/v-usb"]
+	path = packages/v-usb
+	url = https://github.com/obdev/v-usb.git

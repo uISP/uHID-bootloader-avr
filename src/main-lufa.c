@@ -44,7 +44,7 @@ void EVENT_USB_Device_ControlRequest(void)
 
 	if (type == (REQTYPE_CLASS | REQREC_INTERFACE))
 	{
-		uint8_t ret = usbFunctionSetup(&USB_ControlRequest);
+		uint8_t ret = usbFunctionSetup((void *)&USB_ControlRequest);
 		Endpoint_ClearSETUP();
 		if (ret == 0xff) { /* USB_NO_MSG */
 			Endpoint_Read_Control_Stream_LE(replyBuffer, IOBUFLEN+1);
