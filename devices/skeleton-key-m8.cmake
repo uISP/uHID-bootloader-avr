@@ -1,5 +1,6 @@
 # Chose between smaller size or faster flashing speed
 # e.g. "small" or "fast"
+set(UHID_USB_STACK vusb)
 set(CONFIG_UHID_VARIANT "fast")
 
 #Disable eeprom hadling to save up some flash
