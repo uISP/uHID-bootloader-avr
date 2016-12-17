@@ -21,7 +21,7 @@ static void reconnect()
 
 #include "bootlogic.c"
 
-const PROGMEM char usbHidReportDescriptor[42] = {
+const PROGMEM char usbDescriptorHidReport[42] = {
 	0x06, 0x00, 0xff,              // USAGE_PAGE (Generic Desktop)
 	0x09, 0x01,                    // USAGE (Vendor Usage 1)
 	0xa1, 0x01,                    // COLLECTION (Application)
@@ -46,7 +46,6 @@ const PROGMEM char usbHidReportDescriptor[42] = {
 
 	0xc0                           // END_COLLECTION
 };
-
 
 /* We won't use antares startup to save a few bytes */
 int main()
