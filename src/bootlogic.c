@@ -88,8 +88,11 @@ static void leaveBootloader()
 	USB_INTR_ENABLE = 0;
 	USB_INTR_CFG = 0;       /* also reset config bits */
 #endif
+
+#if defined(IVCE)
 	GICR = (1 << IVCE);     /* enable change of interrupt vectors */
 	GICR = (0 << IVSEL);    /* move interrupts to application flash section */
+#endif
 /* We must go through a global function pointer variable instead of writing
  *  ((void (*)(void))0)();
  * because the compiler optimizes a constant 0 to "rcall 0" which is not
@@ -114,7 +117,10 @@ static void flash_write_word(uint16_t data)
 		cli();
 		boot_page_write(prev);
 		sei();
-		boot_rww_enable_safe();
+
+#if defined(RWWSRE)
+    boot_rww_enable_safe();
+#endif
 	}
 }
 

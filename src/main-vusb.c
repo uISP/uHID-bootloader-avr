@@ -13,10 +13,10 @@
 
 static void reconnect()
 {
-	DDRD |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT);
-	PORTD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+	USBDDR |= (1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT);
+	USBOUT &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
 	_delay_ms(5);
-	DDRD &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
+	USBDDR &= ~((1<<CONFIG_USB_CFG_DMINUS_BIT) | (1<<CONFIG_USB_CFG_DMINUS_BIT));
 }
 
 #include "bootlogic.c"
@@ -50,8 +50,11 @@ const PROGMEM char usbDescriptorHidReport[42] = {
 /* We won't use antares startup to save a few bytes */
 int main()
 {
+
+#if defined(IVCE)
 	GICR = (1 << IVCE) ;  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
+#endif
 	initRunButton();
 	reconnect();
 
