@@ -95,4 +95,5 @@ pair somewhere (e.g. USB-IF)
 
 #Authors
 
-Andrew 'Necromant' Anrianov <ncrmnt.org>
+Andrew 'Necromant' Andrianov
+www.ncrmnt.org
