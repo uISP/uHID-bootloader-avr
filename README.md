@@ -86,6 +86,13 @@ uHID bootloader uses 2 different usb stacks, depending on the device in use, the
 * Builds that use LUFA share the very same permissive license.
   See packages/lufa/LUFA/License.txt for details
 
+_HOWEVER_
+
+Please note that the default VID/PID pairs that come along with this bootloader
+in all configs are all for use in OpenSource/OpenHardware projects only, so if
+you really want to close-source your fork, you'll have to get your own VID/PID
+pair somewhere (e.g. USB-IF)
+
 #Authors
 
 Andrew 'Necromant' Anrianov <ncrmnt.org>
