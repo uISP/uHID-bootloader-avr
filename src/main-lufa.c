@@ -4,7 +4,7 @@
  #include <avr/interrupt.h>
  #include <stdbool.h>
  #include <string.h>
-
+#include <uhid.h>
  #include <LUFA/Drivers/USB/USB.h>
 
 
@@ -21,9 +21,7 @@ int main(void)
 	GlobalInterruptEnable();
 
 	for (;;)
-	{
 		USB_USBTask();
-	}
 }
 
 
@@ -32,6 +30,14 @@ void reconnect()
 	USB_Detach();
 	_delay_ms(50);
 	USB_Attach();
+}
+
+
+
+
+void EVENT_USB_Device_ConfigurationChanged(void)
+{
+   Endpoint_ConfigureEndpoint(UHID_IN_EPADDR, EP_TYPE_INTERRUPT, UHID_IN_EPSIZE, 1);
 }
 
 void *usbMsgPtr;

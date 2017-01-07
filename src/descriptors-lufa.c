@@ -27,16 +27,6 @@ enum StringDescriptors_t
         STRING_ID_Serial       = 3, /**< Product string ID */
 };
 
-        /* Macros: */
-                /** Endpoint address of the Generic HID reporting IN endpoint. */
-                #define GENERIC_IN_EPADDR         (ENDPOINT_DIR_IN  | 1)
-
-                /** Endpoint address of the Generic HID reporting OUT endpoint. */
-                #define GENERIC_OUT_EPADDR        (ENDPOINT_DIR_OUT | 2)
-
-                /** Size in bytes of the Generic HID reporting endpoint. */
-                #define GENERIC_EPSIZE            8
-
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM GenericReport[] =
 {
         HID_RI_USAGE_PAGE(16, 0xFF00), /* Vendor Page 0 */
@@ -136,9 +126,9 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor =
         		{
         			.Header                 = {.Size = sizeof(USB_Descriptor_Endpoint_t), .Type = DTYPE_Endpoint},
 
-        			.EndpointAddress        = GENERIC_IN_EPADDR,
+        			.EndpointAddress        = UHID_IN_EPADDR,
         			.Attributes             = (EP_TYPE_INTERRUPT | ENDPOINT_ATTR_NO_SYNC | ENDPOINT_USAGE_DATA),
-        			.EndpointSize           = GENERIC_EPSIZE,
+        			.EndpointSize           = UHID_IN_EPSIZE,
         			.PollingIntervalMS      = 0x05
         		},
 };

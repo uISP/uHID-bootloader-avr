@@ -1,5 +1,5 @@
-#ifndef UISP_H
-#define UISP_H
+#ifndef UHID_H_
+#define UHID_H_
 
 
 #if defined(CONFIG_RUN_BUTTON_ON_START) || defined(CONFIG_RUN_BUTTON_ON_LOOP)
@@ -44,5 +44,8 @@ struct deviceInfo {
 	struct partInfo parts[];
 } __attribute__((packed));
 
+
+#define UHID_IN_EPADDR         0x81
+#define UHID_IN_EPSIZE         8
 
 #endif
