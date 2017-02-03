@@ -80,7 +80,7 @@ static const PROGMEM struct deviceInfo devInfo = {
 
 static void (*nullVector)(void) __attribute__((__noreturn__));
 
-static void leaveBootloader()
+void leaveBootloader()
 {
 	cli();
 	reconnect();

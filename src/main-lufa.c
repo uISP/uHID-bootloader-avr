@@ -12,27 +12,37 @@
  #define GICR    MCUCR
  #endif
 
+ void reconnect()
+ {
+ 	USB_Detach();
+ 	_delay_ms(50);
+ 	USB_Attach();
+ }
+
 int main(void)
 {
 	GICR = (1 << IVCE) ;  /* enable change of interrupt vectors */
 	GICR = (1 << IVSEL); /* move interrupts to boot flash section */
 
+	initRunButton();
 	USB_Init();
 	GlobalInterruptEnable();
+	reconnect();
 
-	for (;;)
+#ifdef CONFIG_RUN_BUTTON_ON_START
+	if (checkRunButton())
+		leaveBootloader();
+#endif
+
+
+	while (1) {
 		USB_USBTask();
+#ifdef	CONFIG_RUN_BUTTON_ON_LOOP
+		if (checkRunButton())
+			leaveBootloader();
+#endif
+	}
 }
-
-
-void reconnect()
-{
-	USB_Detach();
-	_delay_ms(50);
-	USB_Attach();
-}
-
-
 
 
 void EVENT_USB_Device_ConfigurationChanged(void)

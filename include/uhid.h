@@ -47,5 +47,6 @@ struct deviceInfo {
 
 #define UHID_IN_EPADDR         0x81
 #define UHID_IN_EPSIZE         8
+extern void leaveBootloader();
 
 #endif

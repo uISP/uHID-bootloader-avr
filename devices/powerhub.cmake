@@ -1,7 +1,7 @@
-# Chose between smaller size or faster flashing speed
-# e.g. "small" or "fast"
 set(UHID_USB_STACK lufa)
 
+# Chose between smaller size or faster flashing speed
+# e.g. "small" or "fast"
 set(CONFIG_UHID_VARIANT "fast")
 
 #Disable eeprom hadling to save up some flash
@@ -10,9 +10,7 @@ set(CONFIG_UHID_EEPROM_READBACK YES)
 
 #When to check the run button state
 #start, loop, none
-set(CONFIG_RUN_BUTTON "loop")
-set(CONFIG_RUN_BUTTON_IOPORT E)
-set(CONFIG_RUN_BUTTON_BIT  2)
+set(CONFIG_RUN_BUTTON "none")
 
 # Hardware config
 set(CONFIG_MCU  atmega32u4)
